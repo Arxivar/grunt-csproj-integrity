@@ -26,6 +26,10 @@ module.exports = function(grunt) {
             failOnError: false // Fail the task on error. Default: false
         });
 
+        console.log('checkFiles ==> ' + options.checkFiles);
+        console.log('checkIntegrity ==> ' + options.checkIntegrity);
+        console.log('failOnError ==> ' + options.failOnError);
+
         this.files.forEach(function(file) {
 
             if (!file.cwd) {
@@ -71,7 +75,7 @@ module.exports = function(grunt) {
                 .then(function(files) {
                     done();
                 }).catch(function(err) {
-                    grunt.fail.fatal('grunt-csproj-integrity: failures found: ', err);
+                    grunt.fail.fatal('grunt-csproj-integrity: failures found.', err);
                 });
 
         }); // end forEach
