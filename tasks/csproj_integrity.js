@@ -14,55 +14,68 @@ const path = require('path');
 
 module.exports = function(grunt) {
 
-  // Please see the Grunt documentation for more information regarding task
-  // creation: http://gruntjs.com/creating-tasks
-  return grunt.registerMultiTask('csproj_integrity', 'Grunt plugin of csproj-integrity', function() {
+    // Please see the Grunt documentation for more information regarding task
+    // creation: http://gruntjs.com/creating-tasks
+    return grunt.registerMultiTask('csproj_integrity', 'Grunt plugin of csproj-integrity', function() {
 
-  		var done = this.async();
+        var done = this.async();
 
-      var options = this.options({
-        checkFiles: false,
-        checkIntegrity: false,
-        failOnError: false // Fail the task on error. Default: false
-      });
-
-  		this.files.forEach(function(file) {
-
-        if(!file.cwd) {
-          file.cwd = '';
-        }
-
-  			var files = file.src.map(function(f) { return path.join(file.cwd, f) })
-  			grunt.log.debug('Checking: ' +  files.length + ' files.');
-
-        var checkFilesResult; //Store the checkFiles result
-
-       Promise.resolve()
-        .then(function () {
-          if(options.checkFiles) {
-              return checksolution.checkFiles(files);
-          }
-        })
-        .then(function (result) {
-          checkFilesResult = result;
-          if(options.checkIntegrity) {
-              return checksolution.checkIntegrity(files);
-          }
-        })
-        .then((result) => {
-           if (options.failOnError) {
-               var hasErrors = false;
-               hasErrors |= (checkFilesResult && checkFilesResult.length > 0); //One or more files are not included in the solution
-               hasErrors |= (result && result.length > 0); //One or more included files does not exist
-               if (hasErrors) {													
-                   grunt.fail.fatal('grunt-csproj-integrity: failure');
-               }
-            }
-            done();
+        var options = this.options({
+            checkFiles: false,
+            checkIntegrity: false,
+            failOnError: false // Fail the task on error. Default: false
         });
 
-  		}) // end forEach
+        this.files.forEach(function(file) {
 
-  });
+            if (!file.cwd) {
+                file.cwd = '';
+            }
+
+            var files = file.src.map(function(f) {
+                return path.join(file.cwd, f);
+            });
+            grunt.log.debug('Checking: ' + files.length + ' files.');
+
+            Promise.resolve()
+                .then(function() {
+                    if (options.checkFiles) {
+                        console.log('checkFiles...');
+                        return checksolution.checkFiles(files)
+                            .then(function(files) {
+                                console.log('checkFiles: all files included');
+                                return files;
+                            })
+                            .catch(function() {
+                                console.log('checkFiles: some files NOT included');
+                                return options.checkFiles === true && options.failOnError === true ? Promise.reject('checkFiles - errors found...') : [];
+                            });
+                    }
+                    return Promise.resolve([]);
+                })
+                .then(function(files) {
+                    var files = [].concat(files);
+                    if (options.checkIntegrity) {
+                        console.log('checkIntegrity...');
+                        return checksolution.checkIntegrity(files)
+                            .then(function(fileIncludes) {
+                                console.log('checkIntegrity: all integrity checks passed');
+                                return files.concat(fileIncludes);
+                            }).catch(function() {
+                                console.log('checkIntegrity - errors found...');
+                                return options.checkIntegrity === true && options.failOnError === true ? Promise.reject('checkIntegrity - errors found...') : [];
+                            });
+                    }
+                    return Promise.resolve(files);
+                })
+                .then(function(files) {
+                    done();
+                }).catch(function(err) {
+                    grunt.fail.fatal('grunt-csproj-integrity: failures found: ', err);
+                });
+
+        }); // end forEach
+
+    });
 
 };
